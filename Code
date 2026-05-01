@@ -1,0 +1,74 @@
+#include <Servo.h>
+
+Servo myServo;
+
+int trigPin = 10;
+int echoPin = 11;
+int buzzer = 8;
+
+long duration;
+int distance;
+
+int angle = 0;
+int step = 1;   // controls direction
+
+unsigned long lastMove = 0;
+int moveDelay = 25;   // controls speed
+
+void setup() {
+  myServo.attach(9);
+
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzer, OUTPUT);
+
+  Serial.begin(9600);
+}
+
+// 🔧 Faster distance (no heavy averaging)
+int getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH, 20000); // shorter timeout
+  int dist = duration * 0.034 / 2;
+
+  return dist;
+}
+
+void loop() {
+
+  //  Non-blocking servo movement
+  if (millis() - lastMove > moveDelay) {
+
+    lastMove = millis();
+
+    angle += step;
+
+    if (angle >= 180 || angle <= 0) {
+      step = -step;   // reverse direction
+    }
+
+    myServo.write(angle);
+
+    distance = getDistance();
+
+    // Smart buzzer (pro)
+    if (distance > 0 && distance < 40) {
+      int freq = map(distance, 5, 40, 2000, 500);
+      tone(buzzer, freq);
+    } else {
+      noTone(buzzer);
+    }
+
+    //  Send data EXACTLY when servo moves
+    Serial.print(angle);
+    Serial.print(",");
+    Serial.print(distance);
+    Serial.print(".");
+  }
+}
